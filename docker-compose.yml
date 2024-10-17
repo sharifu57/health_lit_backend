@@ -1,0 +1,15 @@
+version: "3.8"
+
+services:
+  web:
+    build: .
+    environment:
+      IP: 127.0.0.1
+    command: bash -c "python manage.py runserver 0.0.0.0:8000"
+    container_name: health
+    image: health
+    working_dir: /health
+    volumes:
+      - .:/health
+    ports:
+      - "8000:8000"
