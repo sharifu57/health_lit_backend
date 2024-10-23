@@ -37,7 +37,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'backend'
+    'backend',
+    'drf_yasg',
+    'rest_framework_swagger'
 ]
 
 MIDDLEWARE = [
@@ -80,7 +82,7 @@ DATABASES = {
         "NAME": "health",
         "USER": "health",
         "PASSWORD": "health%100",
-        "HOST": "192.168.1.179",
+        "HOST": "192.168.0.9",
         "PORT": "5432",
     }
 }
