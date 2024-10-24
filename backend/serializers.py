@@ -4,4 +4,9 @@ from django.contrib.auth.models import User
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        field = "__all__"
+        fields = "__all__"
+        
+class LoginSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = "__all__"

@@ -2,11 +2,15 @@ from django.forms import ValidationError
 from django.shortcuts import render
 from django.contrib.auth.models import User
 from rest_framework.response import Response
-from backend.serializers import RegisterSerializer
+from backend.serializers import *
 from rest_framework import viewsets, status
 from django.contrib.auth.password_validation import validate_password
 from .models import Profile
 from rest_framework.decorators import action
+from rest_framework.views import APIView
+from django.contrib.auth import authenticate
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.utils import timezone
 
 # Create your views here.
 class UserRegisterViewSet(viewsets.GenericViewSet):
@@ -88,4 +92,57 @@ class UserRegisterViewSet(viewsets.GenericViewSet):
             }
         )
     
+    
+class LoginAPIView(APIView):
+    def post(self, request, *args, **kwargs):
+        email = request.data.get("email", "").strip()
+        password = request.data.get("password", "").strip()
+        
+        if not email or not password:
+            return Response(
+                {
+                    'error': 'Email or password is required'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        user = User.objects.filter(email=email, password=password).first()
+        
+        if user:
+            authUser = authenticate(username=user.username, password=password)
+            
+            if authUser:
+                refresh = RefreshToken.for_user(user)
+                serializer = LoginSerializer(user)
+                
+                user.last_login = timezone.now()
+                user.save(update_fields=['last_login'])
+                
+                return Response(
+                    {
+                        'access_token': str(refresh.access_token),
+                        'refresh_token': str(refresh),
+                        'expires_at': str(refresh.access_token.lifetime),
+                        'token_type': 'Bearer',
+                        'data': serializer.data
+                    },
+                    status=status.HTTP_200_OK,
+                )
+                
+            else:
+                return Response(
+                    {
+                        'error': 'Invalid email or password'
+                    },
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+                
+        else:
+            return Response(
+                {
+                    'error': 'User not found'
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
     
