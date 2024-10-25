@@ -11,6 +11,7 @@ from rest_framework.views import APIView
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.utils import timezone
+from django.db.models.query_utils import Q
 
 # Create your views here.
 class UserRegisterViewSet(viewsets.GenericViewSet):
@@ -94,55 +95,41 @@ class UserRegisterViewSet(viewsets.GenericViewSet):
     
     
 class LoginAPIView(APIView):
-    def post(self, request, *args, **kwargs):
-        email = request.data.get("email", "").strip()
-        password = request.data.get("password", "").strip()
-        
-        if not email or not password:
-            return Response(
-                {
-                    'error': 'Email or password is required'
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-            
-        user = User.objects.filter(email=email, password=password).first()
-        
-        if user:
-            authUser = authenticate(username=user.username, password=password)
-            
-            if authUser:
-                refresh = RefreshToken.for_user(user)
-                serializer = LoginSerializer(user)
-                
-                user.last_login = timezone.now()
-                user.save(update_fields=['last_login'])
-                
-                return Response(
-                    {
-                        'access_token': str(refresh.access_token),
-                        'refresh_token': str(refresh),
-                        'expires_at': str(refresh.access_token.lifetime),
-                        'token_type': 'Bearer',
-                        'data': serializer.data
-                    },
-                    status=status.HTTP_200_OK,
-                )
-                
+        def post(self, request, *args, **kwargs):
+            email_or_username = request.data.get("email", "").strip()
+            password = request.data.get("password", "").strip()
+
+            user = User.objects.filter(Q(email=email_or_username) | Q(username=email_or_username)).first()
+
+            if user:
+                auth_user = authenticate(username=user.username, password=password)
+
+                if auth_user:
+                    refresh = RefreshToken.for_user(user)
+                    serializer = LoginSerializer(user)  # Ensure this serializer is correctly implemented
+
+                    # Optional: Update last login time
+                    user.last_login = timezone.now()
+                    user.save(update_fields=['last_login'])
+
+                    return Response({
+                        "status": status.HTTP_200_OK,
+                        "message": "Login Successfully",
+                        "data": serializer.data,
+                        "token": str(refresh.access_token),
+                        "refresh_token": str(refresh),
+                        "expires_at": str(refresh.access_token.lifetime)
+                    })
+                else:
+                    # If authenticate returns None, it's usually due to a wrong password
+                    return Response({
+                        "status": status.HTTP_404_NOT_FOUND,
+                        "message": "Invalid username or password"
+                    })
             else:
-                return Response(
-                    {
-                        'error': 'Invalid email or password'
-                    },
-                    status=status.HTTP_401_UNAUTHORIZED
-                )
-                
-        else:
-            return Response(
-                {
-                    'error': 'User not found'
-                },
-                status=status.HTTP_404_NOT_FOUND
-            )
+                return Response({
+                    "status": status.HTTP_404_NOT_FOUND,
+                    "message": "User does not exist"
+                })
         
     
